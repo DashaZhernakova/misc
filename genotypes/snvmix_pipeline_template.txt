@@ -1,0 +1,36 @@
+#!/bin/bash
+#PBS -N snvmix_pipeline_{$$num}
+#PBS -q ll
+#PBS -l nodes=1:ppn=1
+#PBS -l mem=4gb
+#PBS -l walltime=25:00:00
+#PBS -j oe
+#PBS -o /target/gpfs2/gcc/home/dasha/data/projects/geuvadis/scripts/output/snvmix_noCovThr_{$$num}.out
+#PBS -e /target/gpfs2/gcc/home/dasha/data/projects/geuvadis/scripts/output/snvmix_noCovThr_{$$num}.err
+
+
+out_path=/target/gpfs2/gcc/home/dasha/data/projects/geuvadis/mappedData_masked/{$$prefix}/
+
+files=({$$files})
+for pathToBam in "${files[@]}"
+do
+echo "processing $pathToBam"
+
+id=${pathToBam##*/}
+mkdir ${out_path}${id}
+out=${out_path}${id}/reads_unique_hits.sorted.mpileup
+
+/target/gpfs2/gcc/tools/samtools-0.1.18/samtools mpileup \
+-A -B -Q 0 -s -d10000000 \
+-l /target/gpfs2/gcc/home/dasha/data/projects/geuvadis/genotypes/{$$prefix}/all_chr_positions.txt \
+-f /target/gpfs2/gcc/home/dasha/resources/hg19/indices/human_g1k_v37_chr_prefix.fa \
+${pathToBam}/reads_unique_hits.sorted.bam \
+> $out
+
+/target/gpfs2/gcc/home/dasha/tools/SNVMix2-0.11.8-r5/SNVMix2 \
+-i $out \
+-o ${out}.snvmix
+
+gzip $out
+
+done

@@ -1,0 +1,40 @@
+#!/bin/bash
+#PBS -N flux_capacitor_{$$num}
+#PBS -q ll
+#PBS -l nodes=1:ppn=1
+#PBS -l mem=4gb
+#PBS -l walltime=30:00:00
+#PBS -j oe
+#PBS -o /target/gpfs2/gcc/home/dasha/data/projects/geuvadis/scripts/output/flux-capacitor_{$$num}.out
+#PBS -e /target/gpfs2/gcc/home/dasha/data/projects/geuvadis/scripts/output/flux-capacitor_{$$num}.err
+
+out_path=/target/gpfs2/gcc/home/dasha/data/projects/geuvadis/mappedData_masked/{$$prefix}/
+
+files=({$$files})
+for pathToBam in "${files[@]}"
+do
+echo "processing $pathToBam"
+
+id=${pathToBam##*/}
+mkdir ${out_path}${id}
+out_prefix=${out_path}${id}/reads_unique_hits.sorted
+
+echo "converting .bam to .bed"
+/target/gpfs2/gcc/home/dasha/BEDTools-Version-2.16.2/bin/bamToBed \
+-bed12 \
+-i ${pathToBam}/reads_unique_hits.sorted.bam \
+> ${out_prefix}.bed
+
+rm ${out_prefix}.flux.gtf
+
+/target/gpfs2/gcc/home/dasha/tools/flux-capacitor-1.2.3/bin/flux-capacitor \
+-i ${out_prefix}.bed \
+-a /target/gpfs2/gcc/home/dasha/resources/hg19/genomicIntervals/Homo_sapiens.GRCh37.70_cut_sorted.chrPrefix.gtf \
+-o ${out_prefix}.flux.gtf \
+-m PAIRED \
+-d PAIRED \
+-r true
+
+gzip ${out_prefix}.bed
+
+done
